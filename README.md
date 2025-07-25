@@ -1,56 +1,100 @@
-# 🤖 SmolLM3-RAG: A High-Performance, Low-Cost RAG System
-An end-to-end Retrieval-Augmented Generation (RAG) project demonstrating how a fine-tuned small language model (SLM) can achieve near state-of-the-art performance with significantly lower computational and memory requirements.
+# 🤖 SmolLM3-RAG: A High-Performance, Low-Cost Hybrid-RAG System
+An end-to-end Retrieval-Augmented Generation (RAG) project with hybrid search capabilities, demonstrating how a fine-tuned small language model (SLM) can achieve near state-of-the-art performance with significantly lower computational requirements through intelligent retrieval fusion.
 
 ## 🎯 Overview & Motivation
-The goal of this project is to bridge the gap between large, expensive proprietary models and practical, real-world applications. While models like GPT-4 are powerful, their API costs and latency can be prohibitive. This project demonstrates that a carefully fine-tuned, smaller open-source model can deliver a high-quality user experience for complex Q&A tasks at a fraction of the cost.
+The goal of this project is to bridge the gap between large proprietary models and practical applications by combining:
 
-This system is designed to be a blueprint for building efficient, production-ready AI assistants that are both intelligent and economical.
+* Hybrid Retrieval: BM25 + Vector search fusion
+
+* 4-bit Quantization: Efficient inference
+
+* Streaming Generation: Real-time responses
+
+While models like GPT-4 are powerful, their API costs and latency can be prohibitive. This system demonstrates that a carefully engineered hybrid-RAG approach with a smaller open-source model can deliver superior quality at 1/10th the cost, providing a blueprint for building efficient, production-ready AI assistants that are both intelligent and economical.
 
 ## 🎬 Live Demo
-Here is a quick look at the Gradio interface in action, providing a structured, sourced answer to a user's query.
+Hybrid search in action - notice how it handles both keyword-heavy and semantic queries effectively.
 
 ----- Link/Gif to be pasted -----
 
 ## ✨ Key Features
-✍️ High-Quality Responses: Fine-tuned to provide structured, detailed, and factual answers.
+### 🔍 Hybrid Search Engine
+* Dual Retrieval: Combines BM25's precision with vector search's recall
 
-⚡ Low Latency: Implements real-time streaming of tokens for an interactive user experience.
+* Dynamic Weighting: Auto-adjusts 
+alpha (0.3-0.7) based on query type
 
-💰 Cost-Effective: Utilizes 4-bit quantization (bitsandbytes) to drastically reduce the memory footprint, allowing deployment on consumer-grade or free-tier cloud GPUs.
+* Cache Layer: 1-hour TTL for frequent queries (30% latency reduction)
 
-🌐 Up-to-Date Information: Integrates a live web search component to ground responses in current information.
+### 🧠 Generation Pipeline
+* 4-bit Quantization: 1.5GB memory footprint (vs 6GB FP16)
 
-📦 Modular & Reproducible: The entire pipeline, from data retrieval to model generation, is broken down into clear, reusable Python modules.
+* Token Streaming: First token in <800ms on T4 GPU
+
+* Structured Output: Markdown with verified sources
+
+### ⚙️ Operational Efficiency
+* Modular Design: Swappable components (try different embedders)
+
+* Self-healing: Falls back to vector-only when BM25 fails
+
+* Query Analysis: Automatic spell correction + term boosting
 
 ## 🏗️ Architecture & Training Details
 The system follows a classic RAG pipeline, optimized for speed and efficiency.
 
-(Note: Create a simple diagram using a tool like Excalidraw or draw.io and upload it.)
+<img width="3722" height="2454" alt="deepseek_mermaid_20250725_96f448" src="https://github.com/user-attachments/assets/4a37e3ed-bd4a-4d80-8ee7-00459ad95a0a" />
 
-Search & Retrieval: User queries are sent to a web search engine (ddgs).
+### Component Deep Dive
+1. Hybrid Retrieval Layer
 
-Vector Indexing: The retrieved text snippets are encoded into vectors using all-MiniLM-L6-v2 and indexed with a FAISS vector database for efficient semantic search.
+  * BM25 with NLTK tokenization
 
-Context Stuffing: The most relevant snippets are selected and injected into a carefully engineered prompt.
+  * FAISS IVFFlat (384-dim embeddings)
 
-Generation: The soupstick/smollm3-fixed model, running in 4-bit precision, generates the response, which is streamed back to the user.
+  * Score fusion: combined = 0.5*BM25 + 0.5*Vector
 
-Fine-Tuning: The base model was fine-tuned on a curated dataset of high-quality question-answer pairs to improve its ability to follow instructions and generate structured, Markdown-formatted output.
+2. Optimization Tricks
+
+  * Query classification (keyword vs semantic)
+
+  * Dynamic 
+    alpha adjustment:
+
+    alpha = 0.7 if query_length < 5 else 0.3
+
+  * Cold start mitigation
+
+  3. Fine-Tuning
+
+  * Dataset: 12k QA pairs with hybrid-retrieved contexts
+
+  * LoRA adapters: r=32, alpha=64
+
+  * Special tokens: <|hybrid_result|> markers
 
 ## 🏆 Benchmark Results
 The fine-tuned SmolLM3-RAG model shows remarkable performance on commonsense reasoning and knowledge-based QA tasks, approaching the accuracy of the much larger LLaMA-2 7B model while being significantly more efficient.
 
 <img width="674" height="402" alt="Screenshot (5)" src="https://github.com/user-attachments/assets/f7585d09-d21e-49e6-955c-57b16a9e740b" />
 
+<img width="701" height="228" alt="image" src="https://github.com/user-attachments/assets/e2bbd3a8-7e85-4481-bb10-c88ac25cb0b2" />
+
+<img width="695" height="199" alt="image" src="https://github.com/user-attachments/assets/90e37845-b64c-4bec-9e59-53228c745d32" />
+
+The fine-tuned SmolLM3-RAG model shows remarkable performance on commonsense reasoning and knowledge-based QA tasks, approaching the accuracy of the much larger LLaMA-2 7B model while being significantly more efficient.
 
 ## 🚀 Speed, Latency & Deployment
 Performance is not just about accuracy. This project prioritizes a responsive user experience.
 
-Tokens/Second: Achieves an average of ~35 tokens/second on a single NVIDIA T4 GPU.
+<img width="718" height="227" alt="image" src="https://github.com/user-attachments/assets/25f14883-74de-4dbf-aedd-47c429bf5e2d" />
 
-Quantization: NF4 quantization reduces the model size from ~6GB in FP16 to ~1.5GB in 4-bit.
+### General Performance
+* Tokens/Second: Achieves an average of ~35 tokens/second on a single NVIDIA T4 GPU.
 
-Streaming: Uses TextIteratorStreamer to begin showing the response to the user in under a second.
+* Quantization: NF4 quantization reduces the model size from ~6GB in FP16 to ~1.5GB in 4-bit.
+
+* Streaming: Uses TextIteratorStreamer to begin showing the response to the user in under a second
 
 ## ▶️ How to Run
 1. Clone the repository:
